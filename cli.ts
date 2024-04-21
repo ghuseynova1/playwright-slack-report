@@ -3,14 +3,12 @@
 import { Command } from 'commander';
 import { LogLevel, WebClient } from '@slack/web-api';
 import { HttpsProxyAgent } from 'https-proxy-agent';
-import { IncomingWebhook } from '@slack/webhook';
 import path from 'path';
 import ResultsParser from './src/ResultsParser';
 import SlackClient from './src/SlackClient';
 import doPreChecks from './src/cli/cli_pre_checks';
 import { ICliConfig } from './src/cli/cli_schema';
 import { Meta, SummaryResults } from './src';
-import SlackWebhookClient from './src/SlackWebhookClient';
 
 const program = new Command();
 
@@ -61,27 +59,6 @@ program
         console.log('✅ Results sent to Slack');
         process.exit(0);
       }
-    }
-
-    if (config.sendUsingWebhook) {
-      const webhook = new IncomingWebhook(config.sendUsingWebhook.webhookUrl, {
-        agent,
-      });
-      const slackWebhookClient = new SlackWebhookClient(webhook);
-      let summaryResults = resultSummary;
-      const meta = replaceEnvVars(config.meta);
-      summaryResults = { ...resultSummary, meta };
-      const webhookResult = await slackWebhookClient.sendMessage({
-        customLayout: undefined,
-        customLayoutAsync: undefined,
-        maxNumberOfFailures: config.maxNumberOfFailures,
-        disableUnfurl: config.disableUnfurl,
-        summaryResults,
-      });
-      // eslint-disable-next-line no-console
-      console.log(JSON.stringify(webhookResult, null, 2));
-      console.log('✅ Results sent to Slack');
-      process.exit(0);
     }
   });
 

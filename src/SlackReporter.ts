@@ -9,10 +9,8 @@ import {
 } from '@playwright/test/reporter';
 import { LogLevel, WebClient } from '@slack/web-api';
 import { HttpsProxyAgent } from 'https-proxy-agent';
-import { IncomingWebhook } from '@slack/webhook';
 import ResultsParser from './ResultsParser';
 import SlackClient from './SlackClient';
-import SlackWebhookClient from './SlackWebhookClient';
 
 class SlackReporter implements Reporter {
   private customLayout: Function | undefined;
@@ -36,8 +34,6 @@ class SlackReporter implements Reporter {
   private slackLogLevel: LogLevel | undefined;
 
   private slackOAuthToken: string | undefined;
-
-  private slackWebHookUrl: string | undefined;
 
   private disableUnfurl: boolean | undefined;
 
@@ -77,7 +73,6 @@ class SlackReporter implements Reporter {
       this.maxNumberOfFailuresToShow
         = slackReporterConfig.maxNumberOfFailuresToShow || 10;
       this.slackOAuthToken = slackReporterConfig.slackOAuthToken || undefined;
-      this.slackWebHookUrl = slackReporterConfig.slackWebHookUrl || undefined;
       this.disableUnfurl = slackReporterConfig.disableUnfurl || false;
       this.showInThread = slackReporterConfig.showInThread || false;
       this.slackLogLevel = slackReporterConfig.slackLogLevel || LogLevel.DEBUG;
@@ -111,19 +106,6 @@ class SlackReporter implements Reporter {
 
     const agent = this.proxy ? new HttpsProxyAgent(this.proxy) : undefined;
 
-    if (this.slackWebHookUrl) {
-      const webhook = new IncomingWebhook(this.slackWebHookUrl, { agent });
-      const slackWebhookClient = new SlackWebhookClient(webhook);
-      const webhookResult = await slackWebhookClient.sendMessage({
-        customLayout: this.customLayout,
-        customLayoutAsync: this.customLayoutAsync,
-        maxNumberOfFailures: this.maxNumberOfFailuresToShow,
-        disableUnfurl: this.disableUnfurl,
-        summaryResults: resultSummary,
-      });
-      // eslint-disable-next-line no-console
-      console.log(JSON.stringify(webhookResult, null, 2));
-    } else {
       const slackClient = new SlackClient(
         new WebClient(
           this.slackOAuthToken || process.env.SLACK_BOT_USER_OAUTH_TOKEN,
@@ -162,7 +144,7 @@ class SlackReporter implements Reporter {
           });
         }
       }
-    }
+    // }
   }
 
   preChecks(): { okToProceed: boolean; message?: string } {
@@ -171,33 +153,13 @@ class SlackReporter implements Reporter {
     }
 
     if (
-      !this.slackWebHookUrl
-      && !this.slackOAuthToken
+      !this.slackOAuthToken
       && !process.env.SLACK_BOT_USER_OAUTH_TOKEN
     ) {
       return {
         okToProceed: false,
         message:
           '❌ Neither slack webhook url, slackOAuthToken nor process.env.SLACK_BOT_USER_OAUTH_TOKEN were found',
-      };
-    }
-
-    if (
-      this.slackWebHookUrl
-      && (process.env.SLACK_BOT_USER_OAUTH_TOKEN || this.slackOAuthToken)
-    ) {
-      return {
-        okToProceed: false,
-        message:
-          '❌ You can only enable a single option, either provide a slack webhook url, slackOAuthToken or process.env.SLACK_BOT_USER_OAUTH_TOKEN were found',
-      };
-    }
-
-    if (this.slackWebHookUrl && this.showInThread) {
-      return {
-        okToProceed: false,
-        message:
-          '❌ The showInThread feature is only supported when using slackOAuthToken or process.env.SLACK_BOT_USER_OAUTH_TOKEN',
       };
     }
 
