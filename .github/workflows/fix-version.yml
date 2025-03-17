@@ -1,0 +1,21 @@
+name: Fix iOS Version and Create PR
+
+on:
+  repository_dispatch:
+    types: [fix_ios_version]
+
+jobs:
+  update_version:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v3
+
+      - name: Read current iOS version
+        id: get_version
+        run: |
+          VERSION=$(grep -A1 "CFBundleShortVersionString" ios/mobile/Info.plist | tail -n1 | sed -e 's/<string>//' -e 's/<\/string>//' | xargs)
+          echo "Current version: $VERSION"
+          IFS='.' read -r major minor patch <<< "$VERSION"
+          NEW_VERSION="$major.$minor.$((patch + 1))"
+          echo "NEW_VERSION=$NEW_VERSION" >> $GITHUB_ENV
